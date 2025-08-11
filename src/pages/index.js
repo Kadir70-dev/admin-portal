@@ -1,115 +1,174 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { useState, useEffect } from "react";
+import AppointmentsTable from "../components/AppointmentsTable";
+import EditAppointmentModal from "../components/ EditAppointmentModal";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const doctors = [
+  { id: 1, name: "Ouhoud amer kawas" },
+  { id: 2, name: "Sherry susan philip" },
+  { id: 3, name: "Kadir" },
+  { id: 4, name: "Treesa jose bbin" },
+  { id: null, name: "Unassigned" },
+];
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const generateTimeSlots = () => {
+  const slots = [];
+  const startHour = 12;
+  const endHour = 19;
+  for (let hour = startHour; hour <= endHour; hour++) {
+    slots.push(formatTime(hour, 0));
+    if (hour !== endHour) slots.push(formatTime(hour, 30));
+  }
+  return slots;
+};
+
+const formatTime = (hour24, minute) => {
+  const period = hour24 >= 12 ? "PM" : "AM";
+  let hour12 = hour24 % 12;
+  if (hour12 === 0) hour12 = 12;
+  const minStr = minute === 0 ? "00" : "30";
+  return `${hour12}:${minStr} ${period}`;
+};
 
 export default function Home() {
+  const [appointments, setAppointments] = useState([]);
+  const [editingAppt, setEditingAppt] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  const groupedAppointments = () => {
+    const grouped = {};
+    const slots = generateTimeSlots();
+
+    slots.forEach((slot) => {
+      grouped[slot] = {};
+      doctors.forEach((doc) => {
+        grouped[slot][doc.id === null ? "unassigned" : doc.id] = [];
+      });
+    });
+
+    appointments.forEach((appt) => {
+      const time = appt.appointment_start_time;
+      const docId = appt.doctor_id ?? "unassigned";
+
+      if (grouped[time]) {
+        const key = docId === null ? "unassigned" : docId;
+        if (grouped[time][key]) {
+          grouped[time][key].push(appt);
+        }
+      }
+    });
+
+    return grouped;
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/auth/login";
+      return;
+    }
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/appointments`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setAppointments(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching appointments:", err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const handleEditClick = (appt) => {
+    setEditingAppt(appt);
+    setFormData(appt);
+  };
+
+  const handleSave = () => {
+    const token = localStorage.getItem("token");
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/appointments/${editingAppt.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(formData),
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === editingAppt.id ? { ...a, ...formData } : a))
+        );
+        setEditingAppt(null);
+      })
+      .catch((err) => console.error("Error updating appointment:", err));
+  };
+
+  const grouped = groupedAppointments();
+  const slots = generateTimeSlots();
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="p-6 bg-gray-50 min-h-screen font-sans text-gray-900">
+      <h1 className="text-3xl font-extrabold mb-6 text-center">Appointments Schedule</h1>
+
+      {isLoading ? (
+        <p className="text-center text-gray-600">Loading appointments...</p>
+      ) : (
+        <AppointmentsTable
+          doctors={doctors}
+          grouped={grouped}
+          slots={slots}
+          handleEditClick={handleEditClick}
+          getSlotColor={(appt, i) => {
+            const slotColors = [
+              "#FFE066",
+              "#FF6B6B",
+              "#6BCB77",
+              "#4D96FF",
+              "#FF9F1C",
+              "#9D4EDD",
+              "#00B8A9",
+            ];
+            const id = appt.id ?? i;
+            return slotColors[id % slotColors.length];
+          }}
+          statusColor={(status) => {
+            switch (status) {
+              case "Scheduled":
+                return "bg-green-100 text-green-800";
+              case "Completed":
+                return "bg-blue-100 text-blue-800";
+              case "Cancelled":
+                return "bg-red-100 text-red-800";
+              default:
+                return "bg-gray-100 text-gray-700";
+            }
+          }}
+          paymentColor={(payment) => {
+            switch (payment) {
+              case "Paid":
+                return "bg-green-200 text-green-900";
+              case "Pending":
+                return "bg-yellow-200 text-yellow-900";
+              case "Unpaid":
+                return "bg-red-200 text-red-900";
+              default:
+                return "bg-gray-200 text-gray-800";
+            }
+          }}
         />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      <EditAppointmentModal
+        editingAppt={editingAppt}
+        formData={formData}
+        setFormData={setFormData}
+        setEditingAppt={setEditingAppt}
+        handleSave={handleSave}
+      />
     </div>
   );
 }
