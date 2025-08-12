@@ -31,7 +31,7 @@ export default function EditAppointmentModal({ editingAppt, formData, setFormDat
         </label>
 
         {/* Payment Status Select */}
-        <label className="block mb-6">
+        {/* <label className="block mb-6">
           <span className="block text-sm font-semibold mb-1 text-gray-700">Payment Status</span>
           <select
             className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -45,7 +45,7 @@ export default function EditAppointmentModal({ editingAppt, formData, setFormDat
             <option>Pending</option>
             <option>Paid</option>
           </select>
-        </label>
+        </label> */}
 
         <div className="flex justify-end space-x-4">
           <button

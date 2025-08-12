@@ -98,7 +98,7 @@ export default function AppointmentsTable({
                                 {appt.description || "N/A"}
                               </span>
                             </div>
-                            <div className="text-xs">
+                            {/* <div className="text-xs">
                               Payment:{" "}
                               <span
                                 className={`font-semibold px-1 rounded ${paymentColor(
@@ -107,7 +107,7 @@ export default function AppointmentsTable({
                               >
                                 {appt.payment_status}
                               </span>
-                            </div>
+                            </div> */}
                             <div className="text-xs truncate mt-1">
                               Time: {appt.time12 || formatTime(appt.appointment_start_time)}
                             </div>
