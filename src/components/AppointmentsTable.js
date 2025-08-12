@@ -1,6 +1,26 @@
 import React from "react";
 
-export default function AppointmentsTable({ doctors, grouped, slots, handleEditClick, getSlotColor, statusColor, paymentColor }) {
+export default function AppointmentsTable({
+  doctors,
+  grouped,
+  slots,
+  handleEditClick,
+  getSlotColor,
+  statusColor,
+  paymentColor,
+}) {
+  // Helper function to format ISO date strings into 12-hour format
+  const formatTime = (isoString) => {
+    if (!isoString) return "N/A";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "N/A";
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   return (
     <div className="overflow-x-auto rounded-lg shadow-lg border border-gray-300 bg-white">
       <table className="min-w-full divide-y divide-gray-200">
@@ -28,7 +48,10 @@ export default function AppointmentsTable({ doctors, grouped, slots, handleEditC
 
         <tbody className="divide-y divide-gray-200">
           {slots.map((slot) => (
-            <tr key={slot} className="hover:bg-gray-50 transition-colors duration-150">
+            <tr
+              key={slot}
+              className="hover:bg-gray-50 transition-colors duration-150"
+            >
               <td
                 className="px-6 py-4 font-semibold bg-gray-50 sticky left-0 border-r border-gray-300"
                 style={{ minWidth: "100px" }}
@@ -57,13 +80,23 @@ export default function AppointmentsTable({ doctors, grouped, slots, handleEditC
                             title={`Click to edit appointment: ${appt.full_name}`}
                             style={{ backgroundColor: bgColor, color: "#1a1a1a" }}
                           >
-                            <div className="font-semibold text-sm truncate">{appt.full_name}</div>
-                            <div className="text-xs truncate">File: {appt.file_number || "N/A"}</div>
+                            <div className="font-semibold text-sm truncate">
+                              {appt.full_name}
+                            </div>
+                            <div className="text-xs truncate">
+                              File: {appt.file_number || "N/A"}
+                            </div>
                             <div className="text-xs truncate mt-1">
-                              Date: {appt.date ? new Date(appt.date).toLocaleDateString() : "N/A"}
+                              Date:{" "}
+                              {appt.date
+                                ? new Date(appt.date).toLocaleDateString()
+                                : "N/A"}
                             </div>
                             <div className="text-xs mt-1">
-                              Service: <span className="font-semibold">{appt.description || "N/A"}</span>
+                              Service:{" "}
+                              <span className="font-semibold">
+                                {appt.description || "N/A"}
+                              </span>
                             </div>
                             <div className="text-xs">
                               Payment:{" "}
@@ -75,10 +108,18 @@ export default function AppointmentsTable({ doctors, grouped, slots, handleEditC
                                 {appt.payment_status}
                               </span>
                             </div>
-                            <div className="text-xs truncate mt-1">Time: {appt.appointment_start_time}</div>
+                            <div className="text-xs truncate mt-1">
+                              Time: {appt.time12 || formatTime(appt.appointment_start_time)}
+                            </div>
                             {appt.notes && (
-                              <div className="text-xs italic truncate mt-1" title={appt.notes}>
-                                Notes: {appt.notes.length > 30 ? appt.notes.slice(0, 30) + "..." : appt.notes}
+                              <div
+                                className="text-xs italic truncate mt-1"
+                                title={appt.notes}
+                              >
+                                Notes:{" "}
+                                {appt.notes.length > 30
+                                  ? appt.notes.slice(0, 30) + "..."
+                                  : appt.notes}
                               </div>
                             )}
                             <div className="text-xs mt-1">

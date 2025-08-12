@@ -12,6 +12,7 @@ export default function EditAppointmentModal({ editingAppt, formData, setFormDat
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
         <h2 className="text-2xl font-bold mb-6 text-gray-900">Edit Appointment</h2>
 
+        {/* Appointment Status Select */}
         <label className="block mb-4">
           <span className="block text-sm font-semibold mb-1 text-gray-700">Status</span>
           <select
@@ -19,12 +20,17 @@ export default function EditAppointmentModal({ editingAppt, formData, setFormDat
             value={formData.appointment_status || ""}
             onChange={(e) => setFormData({ ...formData, appointment_status: e.target.value })}
           >
+            <option>Draft</option>
+            <option>Confirm</option>
+            <option>Waiting</option>
             <option>Scheduled</option>
             <option>Completed</option>
             <option>Cancelled</option>
+            <option>Done</option>
           </select>
         </label>
 
+        {/* Payment Status Select */}
         <label className="block mb-6">
           <span className="block text-sm font-semibold mb-1 text-gray-700">Payment Status</span>
           <select
@@ -32,9 +38,12 @@ export default function EditAppointmentModal({ editingAppt, formData, setFormDat
             value={formData.payment_status || ""}
             onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
           >
-            <option>Paid</option>
-            <option>Pending</option>
+            <option>Draft</option>
+            <option>Confirm</option>
+            <option>Waiting</option>
             <option>Unpaid</option>
+            <option>Pending</option>
+            <option>Paid</option>
           </select>
         </label>
 

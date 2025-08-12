@@ -10,24 +10,39 @@ const doctors = [
   { id: null, name: "Unassigned" },
 ];
 
+// Format time in strict 12-hour format with leading zero hour, e.g. 01:30 PM
+const formatTime = (date) => {
+  if (!(date instanceof Date) || isNaN(date)) return null;
+  const options = {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  };
+  return date.toLocaleTimeString("en-US", options);
+};
+
+// Generate half-hour slots between noon and 7pm
 const generateTimeSlots = () => {
   const slots = [];
   const startHour = 12;
   const endHour = 19;
   for (let hour = startHour; hour <= endHour; hour++) {
-    slots.push(formatTime(hour, 0));
-    if (hour !== endHour) slots.push(formatTime(hour, 30));
+    slots.push(formatTime(new Date(2025, 0, 1, hour, 0)));
+    if (hour !== endHour) slots.push(formatTime(new Date(2025, 0, 1, hour, 30)));
   }
   return slots;
 };
 
-const formatTime = (hour24, minute) => {
-  const period = hour24 >= 12 ? "PM" : "AM";
-  let hour12 = hour24 % 12;
-  if (hour12 === 0) hour12 = 12;
-  const minStr = minute === 0 ? "00" : "30";
-  return `${hour12}:${minStr} ${period}`;
+// Convert backend ISO timestamp to slot label
+const convertBackendTimeToSlot = (isoString) => {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return null;
+  return formatTime(date);
 };
+
+// Normalize slot keys for safe comparison
+const normalizeSlot = (slot) => (slot ? slot.trim().toUpperCase() : slot);
 
 export default function Home() {
   const [appointments, setAppointments] = useState([]);
@@ -37,42 +52,56 @@ export default function Home() {
 
   const groupedAppointments = () => {
     const grouped = {};
-    const slots = generateTimeSlots();
+    const slots = generateTimeSlots().map(normalizeSlot);
 
+    // Initialize empty slots per doctor
     slots.forEach((slot) => {
       grouped[slot] = {};
       doctors.forEach((doc) => {
-        grouped[slot][doc.id === null ? "unassigned" : doc.id] = [];
+        grouped[slot][doc.id === null ? "UNASSIGNED" : doc.id] = [];
       });
     });
 
+    // Place each appointment in correct slot
     appointments.forEach((appt) => {
-      const time = appt.appointment_start_time;
-      const docId = appt.doctor_id ?? "unassigned";
+      // Use backend formatted time12 if present
+      const rawSlotTime = appt.time12 || convertBackendTimeToSlot(appt.appointment_start_time);
+      const slotTime = normalizeSlot(rawSlotTime);
+      const docId = appt.doctor_id === null ? "UNASSIGNED" : appt.doctor_id;
 
-      if (grouped[time]) {
-        const key = docId === null ? "unassigned" : docId;
-        if (grouped[time][key]) {
-          grouped[time][key].push(appt);
-        }
+      if (grouped[slotTime]) {
+        grouped[slotTime][docId].push(appt);
+      } else {
+        console.warn(`[groupedAppointments] No slot found for appointment time: "${slotTime}" (raw: "${rawSlotTime}")`);
       }
     });
+
 
     return grouped;
   };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const token = localStorage.getItem("token");
     if (!token) {
+      console.log("No token found, redirecting to login...");
       window.location.href = "/auth/login";
       return;
     }
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/appointments`, {
+
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/appointments`;
+    console.log("Fetching appointments from:", url);
+
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        console.log("Response status:", res.status);
+        return res.json();
+      })
       .then((data) => {
+        console.log("Fetched appointments data:", data);
         setAppointments(data);
         setIsLoading(false);
       })
@@ -118,7 +147,9 @@ export default function Home() {
   return (
     <div className="p-6 bg-gray-50 min-h-screen font-sans text-gray-900">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold text-center flex-grow">Appointments Schedule</h1>
+        <h1 className="text-3xl font-extrabold text-center flex-grow">
+          Appointments Schedule
+        </h1>
         <button
           onClick={handleLogout}
           className="ml-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
